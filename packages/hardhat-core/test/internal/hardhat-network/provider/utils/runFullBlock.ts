@@ -9,6 +9,8 @@ import { HardhatNode } from "../../../../../src/internal/hardhat-network/provide
 import { ForkedNodeConfig } from "../../../../../src/internal/hardhat-network/provider/node-types";
 import { BlockBuilder } from "../../../../../src/internal/hardhat-network/provider/vm/block-builder";
 import { FORK_TESTS_CACHE_PATH } from "../../helpers/constants";
+import { EthereumJSAdapter } from "../../../../../src/internal/hardhat-network/provider/vm/ethereumjs";
+import { ForkStateManager } from "../../../../../src/internal/hardhat-network/provider/fork/ForkStateManager";
 
 import { assertEqualBlocks } from "./assertEqualBlocks";
 
@@ -92,4 +94,10 @@ export async function runFullBlock(
   const transactionResults = blockBuilder.getTransactionResults();
 
   await assertEqualBlocks(newBlock, transactionResults, rpcBlock, forkClient);
+
+  const dumpStateFlag = process.env.HARDHAT_RUN_FULL_BLOCK_SHOULD_DUMP_STATE;
+  const shouldDumpState = dumpStateFlag !== undefined && dumpStateFlag !== "";
+  if (shouldDumpState) {
+    console.error(JSON.stringify(((forkedNode["_vm"] as EthereumJSAdapter)["_stateManager"] as ForkStateManager)["_state"]));
+  }
 }
