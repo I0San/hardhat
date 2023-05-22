@@ -338,4 +338,64 @@ mod tests {
         take_code();
         add_code();
     }
+
+    #[test]
+    fn repro_repeated_remove_and_insert_account_has_no_effect() {
+        let state: std::cell::RefCell<LayeredState<RethnetLayer>> = Default::default();
+
+        let seed = 1;
+        let address = Address::from_low_u64_ne(seed);
+
+        state
+            .borrow_mut()
+            .insert_account(
+                address,
+                AccountInfo::new(
+                    U256::from(seed),
+                    seed,
+                    Bytecode::new_raw(Bytes::copy_from_slice(address.as_bytes())),
+                ),
+            )
+            .unwrap();
+        state.borrow_mut().checkpoint().unwrap();
+        state.borrow_mut().make_snapshot();
+        let code = Bytecode::new_raw(Bytes::copy_from_slice(address.as_bytes()));
+        let insert_account = || {
+            state
+                .borrow_mut()
+                .insert_account(
+                    address,
+                    AccountInfo {
+                        code_hash: code.hash(),
+                        code: Some(code.clone()),
+                        ..AccountInfo::default()
+                    },
+                )
+                .unwrap();
+        };
+        insert_account();
+        assert!(
+            state
+                .borrow()
+                .basic(address)
+                .unwrap()
+                .is_some()
+        );
+        state.borrow_mut().remove_account(address).unwrap();
+        assert!(
+            state
+                .borrow()
+                .basic(address)
+                .unwrap()
+                .is_none()
+        );
+        insert_account();
+        assert!(
+            state
+                .borrow()
+                .basic(address)
+                .unwrap()
+                .is_some()
+        );
+    }
 }
